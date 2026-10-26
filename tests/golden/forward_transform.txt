@@ -1,0 +1,8 @@
+def transform_forward(row):
+    row = dict(row)
+    if 'age' in row:
+        row['age'] = _cast_int(row['age'])
+    row['email'] = row.pop('fname', None)
+    row.pop('legacy_flag', None)
+    row['first_name'] = None
+    return row

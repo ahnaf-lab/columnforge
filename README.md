@@ -5,10 +5,11 @@ deterministic, reversible transform pipeline between them, complete with an
 auto-generated inverse. It renders a side-by-side terminal diff of real
 sample rows before/after so you can see the migration, not just trust it.
 
-This repository currently implements the first four building blocks: the
-schema diff engine, the codegen step on top of it, a round-trip proof that
-holds the generated transforms to their promise, and the terminal
-before/after sample-row report. Given an old and a new column specification,
+This repository implements the schema diff engine, the codegen step on top
+of it, a round-trip proof that holds the generated transforms to their
+promise, the terminal before/after sample-row report, and a `columnforge`
+command-line tool that wraps all of the above for use without writing any
+Python. Given an old and a new column specification,
 it computes a typed, deterministic list of add/drop/rename/retype
 operations, builds a forward row transform for those operations plus an
 inverse derived automatically from them, can run a seeded random table
@@ -27,6 +28,9 @@ pip install -e .
 
 Alternatively, run code from this directory directly, or add it to
 `sys.path`, without installing anything.
+
+Installing the package also installs a `columnforge` command-line tool
+(see [Command line](#command-line) below).
 
 ## Usage
 
@@ -161,6 +165,38 @@ capturing output for a log file). `build_report` returns the structured
 `SampleRowReport` (ops, column pairings, and per-row before/after/changed
 data) if you want to build your own renderer instead of the built-in
 text table.
+
+## Command line
+
+Installing the package puts a `columnforge` command on your `PATH`. Every
+subcommand takes an old/new schema pair as JSON files: a JSON array of
+`["name", "dtype"]` / `["name", "dtype", nullable]` arrays, or of
+`{"name": ..., "dtype": ..., "nullable": ...}` objects -- the same shapes
+`Schema` accepts directly in Python.
+
+```bash
+columnforge diff old_schema.json new_schema.json
+# retype age str -> int
+# rename fname -> email
+# drop   legacy_flag (bool)
+# add    first_name (str)
+
+columnforge codegen old_schema.json new_schema.json
+# prints the forward transform's source, a blank line, then the inverse's
+
+columnforge roundtrip old_schema.json new_schema.json --rows 200 --seed 0
+# round-trip OK: 200 rows checked, seed=0, 4 ops
+# (exits non-zero and prints the failing row to stderr if the proof fails)
+
+columnforge preview old_schema.json new_schema.json sample_rows.json
+# renders the same before/after table as preview(), reading sample rows
+# from a JSON array of row objects; add --color always/never to override
+# the automatic terminal/NO_COLOR detection
+```
+
+The CLI only reads the JSON files you point it at and writes to
+stdout/stderr -- it makes no network calls and never evaluates file
+contents as code.
 
 ## Status
 

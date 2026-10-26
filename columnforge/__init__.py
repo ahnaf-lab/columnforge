@@ -31,6 +31,7 @@ from .report import (
     preview,
     render_report,
 )
+from .cli import main as cli_main
 
 __all__ = [
     "Column",
@@ -57,6 +58,7 @@ __all__ = [
     "build_report",
     "preview",
     "render_report",
+    "cli_main",
 ]
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

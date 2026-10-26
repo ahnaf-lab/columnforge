@@ -1,0 +1,4 @@
+        id  fname→email  age  -legacy_flag  +first_name
+        --  -----------  ---  ------------  -----------
+before  1   Ada          36   true          —          
+after   1   Ada          36   —             —          

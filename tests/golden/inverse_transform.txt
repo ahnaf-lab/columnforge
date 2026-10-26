@@ -1,0 +1,8 @@
+def transform_inverse(row):
+    row = dict(row)
+    row.pop('first_name', None)
+    row['legacy_flag'] = None
+    row['fname'] = row.pop('email', None)
+    if 'age' in row:
+        row['age'] = _cast_str(row['age'])
+    return row
