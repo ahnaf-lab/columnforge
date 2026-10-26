@@ -9,6 +9,13 @@ from .diff import (
     RetypeColumn,
     diff_schemas,
 )
+from .codegen import (
+    TransformPair,
+    build_transform,
+    invert_op,
+    invert_ops,
+    render_source,
+)
 
 __all__ = [
     "Column",
@@ -19,6 +26,11 @@ __all__ = [
     "RetypeColumn",
     "DiffOp",
     "diff_schemas",
+    "TransformPair",
+    "build_transform",
+    "invert_op",
+    "invert_ops",
+    "render_source",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
