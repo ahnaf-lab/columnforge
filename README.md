@@ -5,12 +5,15 @@ deterministic, reversible transform pipeline between them, complete with an
 auto-generated inverse. It renders a side-by-side terminal diff of real
 sample rows before/after so you can see the migration, not just trust it.
 
-This repository currently implements the first two building blocks: the
-schema diff engine and the codegen step on top of it. Given an old and a new
+This repository currently implements the first three building blocks: the
+schema diff engine, the codegen step on top of it, and a round-trip proof
+that holds the generated transforms to their promise. Given an old and a new
 column specification, it computes a typed, deterministic list of
-add/drop/rename/retype operations, then builds a forward row transform for
-those operations plus an inverse derived automatically from them. A later
-milestone will add the terminal before/after preview on top of this.
+add/drop/rename/retype operations, builds a forward row transform for those
+operations plus an inverse derived automatically from them, and can run a
+seeded random table through forward-then-inverse to prove the two actually
+reconstruct each other. A later milestone will add the terminal before/after
+preview on top of this.
 
 ## Install
 
@@ -95,6 +98,37 @@ a before/after row preview so you can see what will run, not just trust it.
 That text is generated for review only; the callables in `pair.forward` and
 `pair.inverse` are built directly as closures and are never produced by
 compiling or executing it.
+
+### Round-trip proofs
+
+`assert_round_trip` proves that a diff's forward/inverse pair is actually
+reversible, rather than just trusting the derivation in `invert_ops`. It
+generates a seeded, deterministic table of random rows matching the old
+schema, pushes each row through forward-then-inverse, and raises
+`RoundTripError` with the offending row (original, forward, restored, and
+expected values) the instant one fails to reconstruct exactly.
+
+```python
+from columnforge import assert_round_trip
+
+report = assert_round_trip(old_schema, new_schema, n_rows=200, seed=0)
+print(report.rows_checked, len(report.ops))
+```
+
+The same `seed` always produces the same table, so a failure is reproducible.
+"Exact reconstruction" means the restored row equals the original row, with
+one documented exception: a column removed by a `DropColumn` comes back as
+`None` (its value was discarded going forward, so there is nothing to
+restore), and that is treated as the expected outcome, not a failure.
+Retyped columns are held to full exactness: the random generator only draws
+values that are known to cast losslessly to the new dtype and back (for
+example, a `float`-to-`int` retype only generates integral-valued floats,
+since truncating a fractional one would lose information that no amount of
+correct pipeline code could recover), so any mismatch always indicates a
+real bug in the transform rather than an inherently lossy cast.
+
+`generate_table(schema, n_rows, seed)` is the underlying row generator and
+can be used on its own to get a deterministic sample table for a schema.
 
 ## Status
 
