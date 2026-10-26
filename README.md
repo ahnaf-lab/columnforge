@@ -5,15 +5,16 @@ deterministic, reversible transform pipeline between them, complete with an
 auto-generated inverse. It renders a side-by-side terminal diff of real
 sample rows before/after so you can see the migration, not just trust it.
 
-This repository currently implements the first three building blocks: the
-schema diff engine, the codegen step on top of it, and a round-trip proof
-that holds the generated transforms to their promise. Given an old and a new
-column specification, it computes a typed, deterministic list of
-add/drop/rename/retype operations, builds a forward row transform for those
-operations plus an inverse derived automatically from them, and can run a
-seeded random table through forward-then-inverse to prove the two actually
-reconstruct each other. A later milestone will add the terminal before/after
-preview on top of this.
+This repository currently implements the first four building blocks: the
+schema diff engine, the codegen step on top of it, a round-trip proof that
+holds the generated transforms to their promise, and the terminal
+before/after sample-row report. Given an old and a new column specification,
+it computes a typed, deterministic list of add/drop/rename/retype
+operations, builds a forward row transform for those operations plus an
+inverse derived automatically from them, can run a seeded random table
+through forward-then-inverse to prove the two actually reconstruct each
+other, and can render real sample rows side by side -- before and after --
+with every changed cell highlighted.
 
 ## Install
 
@@ -41,9 +42,9 @@ old_schema = [
 
 new_schema = [
     ("id", "int"),
-    ("first_name", "str"),
-    ("age", "int"),
     ("email", "str"),
+    ("age", "int"),
+    ("first_name", "str"),
 ]
 
 ops = diff_schemas(old_schema, new_schema)
@@ -51,9 +52,9 @@ ops = diff_schemas(old_schema, new_schema)
 for op in ops:
     print(op)
 # RetypeColumn(old=Column(name='age', dtype='str', ...), new=Column(name='age', dtype='int', ...))
-# RenameColumn(old=Column(name='fname', ...), new=Column(name='first_name', ...))
+# RenameColumn(old=Column(name='fname', ...), new=Column(name='email', ...))
 # DropColumn(column=Column(name='legacy_flag', ...))
-# AddColumn(column=Column(name='email', ...))
+# AddColumn(column=Column(name='first_name', ...))
 ```
 
 Column specs can be given as `(name, dtype)` or `(name, dtype, nullable)`
@@ -79,10 +80,10 @@ ops = diff_schemas(old_schema, new_schema)
 pair = build_transform(ops)
 
 new_row = pair.forward({"id": 1, "fname": "Ada", "age": "36"})
-# {"id": 1, "first_name": "Ada", "age": 36}
+# {"id": 1, "age": 36, "email": "Ada", "first_name": None}
 
 old_row = pair.inverse(new_row)
-# {"id": 1, "fname": "Ada", "age": "36"}
+# {"id": 1, "age": "36", "legacy_flag": None, "fname": "Ada"}
 ```
 
 Each op kind has a fixed, mechanical inverse: an add inverts to a drop and
@@ -129,6 +130,37 @@ real bug in the transform rather than an inherently lossy cast.
 
 `generate_table(schema, n_rows, seed)` is the underlying row generator and
 can be used on its own to get a deterministic sample table for a schema.
+
+### Sample-row diff report
+
+`preview` (and its lower-level pieces, `build_report` and `render_report`)
+renders a before/after terminal table so you can see what a migration
+actually does to real rows, not just trust the generated transform.
+
+```python
+from columnforge import preview
+
+rows = [{"id": 1, "fname": "Ada", "age": "36", "legacy_flag": True}]
+print(preview(old_schema, new_schema, rows))
+```
+
+Each diff op becomes one display column, labeled the same way regardless of
+whether a column kept its name, was renamed (`fname→email`), was retyped,
+was added (`+first_name`), or was dropped (`-legacy_flag`). Every sample row
+renders as a `before` line and an `after` line underneath the header, and any
+cell whose value actually changed is highlighted -- in color on a terminal,
+or always via the `before`/`after` text itself when color is unavailable, so
+nothing depends on color to be understood. An added or dropped column's
+missing side is always highlighted, since there is nothing on the other side
+to compare it to.
+
+Color is used automatically when stdout is a terminal and the `NO_COLOR`
+environment variable is unset; pass `color=True`/`color=False` to `preview`
+or `render_report` to override that detection explicitly (for example, when
+capturing output for a log file). `build_report` returns the structured
+`SampleRowReport` (ops, column pairings, and per-row before/after/changed
+data) if you want to build your own renderer instead of the built-in
+text table.
 
 ## Status
 

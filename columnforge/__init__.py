@@ -22,6 +22,15 @@ from .roundtrip import (
     assert_round_trip,
     generate_table,
 )
+from .report import (
+    ColumnPairing,
+    RowDiff,
+    SampleRowReport,
+    build_pairings,
+    build_report,
+    preview,
+    render_report,
+)
 
 __all__ = [
     "Column",
@@ -41,6 +50,13 @@ __all__ = [
     "RoundTripReport",
     "assert_round_trip",
     "generate_table",
+    "ColumnPairing",
+    "RowDiff",
+    "SampleRowReport",
+    "build_pairings",
+    "build_report",
+    "preview",
+    "render_report",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
